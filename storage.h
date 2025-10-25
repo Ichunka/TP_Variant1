@@ -6,7 +6,7 @@
 template <size_t size, size_t align>
 struct aligned_storage_base
 {
-    alignas(align) std::array<std::byte, size> data;
+    alignas(align) std::byte data[size];
 };
 
 template <size_t size, size_t align>
@@ -38,20 +38,17 @@ struct destructor_dispatcher<T, Ts...>
         }
         else
         {
-            destructor_dispatcher<Ts...>::destroy(--index, storage);
+            destructor_dispatcher<Ts...>::destroy(index - 1, storage);
         }
     }
 };
 
-template <typename T>
-struct destructor_dispatcher<T>
+template <>
+struct destructor_dispatcher<>
 {
-    static void destroy(std::size_t index, void* storage)
+    static void destroy(std::size_t, void*)
     {
-        if (index == 0)
-        {
-            reinterpret_cast<T*>(storage)-> ~T();
-        }
+
     }
 };
 
@@ -61,7 +58,7 @@ struct copy_constructor_dispatcher;
 template <typename T, typename... Ts>
 struct copy_constructor_dispatcher<T, Ts...>
 {
-    static void copy(std::size_t index, void* destination, void* source)
+    static void copy(std::size_t index, void* destination, const void* source)
     {
         if (index == 0)
         {
@@ -69,20 +66,17 @@ struct copy_constructor_dispatcher<T, Ts...>
         }
         else
         {
-            copy_constructor_dispatcher<Ts...>::copy(--index, destination, source);
+            copy_constructor_dispatcher<Ts...>::copy(index - 1, destination, source);
         }
     }
 };
 
-template <typename T>
-struct copy_constructor_dispatcher<T>
+template <>
+struct copy_constructor_dispatcher<>
 {
-    static void copy(std::size_t index, void* destination, void* source)
+    static void copy(std::size_t, void*, const void*)
     {
-        if (index == 0)
-        {
-            new (destination) T(*reinterpret_cast<const T*>(source));
-        }
+
     }
 };
 
@@ -100,20 +94,17 @@ struct move_constructor_dispatcher<T, Ts...>
         }
         else
         {
-            move_constructor_dispatcher<Ts...>::move(--index, destination, source);
+            move_constructor_dispatcher<Ts...>::move(index - 1, destination, source);
         }
     }
 };
 
-template <typename T>
-struct move_constructor_dispatcher<T>
+template <>
+struct move_constructor_dispatcher<>
 {
-    static void move(std::size_t index, void* destination, void* source)
+    static void move(std::size_t, void*, void*)
     {
-        if (index == 0)
-        {
-            new (destination) T(std::move(*reinterpret_cast<T*>(source)));
-        }
+
     }
 };
 
@@ -123,11 +114,11 @@ struct copy_assignment_dispatcher;
 template <typename T, typename... Ts>
 struct copy_assignment_dispatcher<T, Ts...>
 {
-    static void copy(std::size_t index, void* destination, void* source)
+    static void copy(std::size_t index, void* destination, const void* source)
     {
         if (index == 0)
         {
-            ::new (destination) T(*reinterpret_cast<const T*>(source));
+            *reinterpret_cast<T*>(destination) = *reinterpret_cast<const T*>(source);
         }
         else
         {
@@ -136,15 +127,12 @@ struct copy_assignment_dispatcher<T, Ts...>
     }
 };
 
-template <typename T>
-struct copy_assignment_dispatcher<T>
+template <>
+struct copy_assignment_dispatcher<>
 {
-    static void copy(std::size_t index, void* destination, void* source)
+    static void copy(std::size_t , void* destination, const void* source)
     {
-        if (index == 0)
-        {
-            ::new (destination) T(*reinterpret_cast<const T*>(source));
-        }
+
     }
 };
 
@@ -158,7 +146,7 @@ struct move_assignment_dispatcher<T, Ts...>
     {
         if (index == 0)
         {
-            ::new (destination) T(std::move(*reinterpret_cast<T*>(source)));
+            *reinterpret_cast<T*>(destination) = std::move(*reinterpret_cast<const T*>(source));
         }
         else
         {
@@ -167,15 +155,12 @@ struct move_assignment_dispatcher<T, Ts...>
     }
 };
 
-template <typename T>
-struct move_assignment_dispatcher<T>
+template <>
+struct move_assignment_dispatcher<>
 {
-    static void move(std::size_t index, void* destination, void* source)
+    static void move(std::size_t, void*, void*)
     {
-        if (index == 0)
-        {
-            ::new (destination) T(std::move(*reinterpret_cast<T*>(source)));
-        }
+
     }
 };
 
